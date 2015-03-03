@@ -1,7 +1,8 @@
 module Fixtures
+  ::User = Struct.new(:name, :age, :id, :friends, :manager)
 
   def self.included(base)
-    base.let(:user_class) { Struct.new(:name, :age, :id, :friends, :manager) }
+    base.let(:user_class) { User }
     base.let(:friend) { user_class.new('Joe', 33, 2, []) }
     base.let(:manager) { user_class.new('Jane', 29, 3, [friend]) }
     base.let(:user) { user_class.new('Ismael', 35, 1, [friend], manager) }

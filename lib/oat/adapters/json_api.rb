@@ -24,6 +24,7 @@ module Oat
       end
 
       def type(*types)
+        data[:type] = types.first.to_s.pluralize.to_sym
         @root_name = types.first.to_s.pluralize.to_sym
       end
 
@@ -74,8 +75,10 @@ module Oat
         if ent
           ent_hash = ent.to_hash
           _name = entity_name(name)
-          link_name = _name.to_s.pluralize.to_sym
-          data[:links][_name] = ent_hash[:id]
+          class_name = obj.class.to_s.underscore
+          link_name = class_name.pluralize.to_sym
+
+          data[:links][_name] = {id: ent_hash[:id].to_s, type: link_name.to_s}
 
           entity_hash[link_name] ||= []
           unless entity_hash[link_name].include? ent_hash
@@ -95,7 +98,7 @@ module Oat
           ent = serializer_from_block_or_class(obj, serializer_class, context_options, &block)
           if ent
             ent_hash = ent.to_hash
-            data[:links][link_name] << ent_hash[:id]
+            data[:links][link_name] << ent_hash[:id].to_s
             unless entity_hash[link_name].include? ent_hash
               entity_hash[link_name] << ent_hash
             end
@@ -125,11 +128,11 @@ module Oat
         if serializer.top != serializer
           return data
         else
-          h = {}
+          h = {data: {}}
           if @treat_as_resource_collection
-            h[root_name] = data[:resource_collection]
+            h[:data][root_name] = data[:resource_collection]
           else
-            h[root_name] = [data]
+            h[:data]= data
           end
           h[:linked] = @entities if @entities.keys.any?
           h[:links] = @link_templates if @link_templates.keys.any?

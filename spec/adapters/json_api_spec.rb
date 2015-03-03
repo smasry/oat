@@ -10,27 +10,28 @@ describe Oat::Adapters::JsonAPI do
 
   describe '#to_hash' do
     context 'top level' do
-      subject(:users){ hash.fetch(:users) }
-      its(:size) { should eq(1) }
+      subject(:data){ hash.fetch(:data) }
 
       it 'contains the correct user properties' do
-        expect(users.first).to include(
+        expect(data).to match(
+          :type => :users,
           :id => user.id,
           :name => user.name,
           :age => user.age,
           :controller_name => 'some_controller',
-          :message_from_above => nil
+          :message_from_above => nil,
+          :links => {:self=>{:href=>"http://foo.bar.com/1"}, :empty => {:href => nil}, :friends=>["2"], :manager=>{id: "3", type: "users" }}
         )
       end
 
       it 'contains the correct user links' do
-        expect(users.first.fetch(:links)).to include(
+        expect(data.fetch(:links)).to include(
           :self => {
-            :href => "http://foo.bar.com/#{user.id}"
+            :href => "http://foo.bar.com/#{user.id}",
           },
           # these links are added by embedding entities
-          :manager => manager.id,
-          :friends => [friend.id]
+          :manager => {id: manager.id.to_s, type: "users"},
+          :friends => [friend.id.to_s]
         )
       end
     end
@@ -83,15 +84,16 @@ describe Oat::Adapters::JsonAPI do
       end
 
       context 'using #entity' do
-        subject(:linked_managers){ hash.fetch(:linked).fetch(:managers) }
+        subject(:linked_managers){ hash.fetch(:linked).fetch(:users) }
 
         it "does not duplicate an entity that is associated with 2 objects" do
           expect(linked_managers.size).to eq(1)
         end
 
         it "contains the correct properties and links" do
-          expect(linked_managers.first).to include(
+          expect(linked_managers.first).to match(
             :id => manager.id,
+            :type => :managers,
             :name => manager.name,
             :age => manager.age,
             :links => { :self => { :href => "http://foo.bar.com/#{manager.id}"} }
@@ -124,7 +126,7 @@ describe Oat::Adapters::JsonAPI do
         end
 
         it 'renders just the string' do
-          expect(hash.fetch(:users).first.fetch(:links)).to eq({
+          expect(hash.fetch(:data).fetch(:links)).to eq({
             :self => "45"
           })
         end
@@ -141,7 +143,7 @@ describe Oat::Adapters::JsonAPI do
         end
 
         it 'renders the array' do
-          expect(hash.fetch(:users).first.fetch(:links)).to eq({
+          expect(hash.fetch(:data).fetch(:links)).to eq({
             :self => ["45", "46", "47"]
           })
         end
@@ -159,7 +161,7 @@ describe Oat::Adapters::JsonAPI do
           end
 
           it 'renders all the keys' do
-            expect(hash.fetch(:users).first.fetch(:links)).to eq({
+            expect(hash.fetch(:data).fetch(:links)).to eq({
               :self => {
                 :href => "http://foo.bar.com/#{user.id}",
                 :id => user.id.to_s,
@@ -180,7 +182,7 @@ describe Oat::Adapters::JsonAPI do
           end
 
           it 'renders all the keys' do
-            expect(hash.fetch(:users).first.fetch(:links)).to eq({
+            expect(hash.fetch(:data).fetch(:links)).to eq({
               :self => {
                 :href => "http://foo.bar.com/1,2,3",
                 :ids => ["1", "2", "3"],
@@ -224,10 +226,10 @@ describe Oat::Adapters::JsonAPI do
 
     context 'with a nil entity relationship' do
       let(:manager) { nil }
-      let(:users) { hash.fetch(:users) }
+      let(:user_data) { hash.fetch(:data) }
 
       it 'excludes the entity from user links' do
-        expect(users.first.fetch(:links)).not_to include(:manager)
+        expect(user_data.fetch(:links)).not_to include(:manager)
       end
 
       it 'excludes the entity from the linked hash' do
@@ -237,10 +239,10 @@ describe Oat::Adapters::JsonAPI do
 
     context 'with a nil entities relationship' do
       let(:user) { user_class.new('Ismael', 35, 1, nil, manager) }
-      let(:users) { hash.fetch(:users) }
+      let(:user_data) { hash.fetch(:data) }
 
       it 'excludes the entity from user links' do
-        expect(users.first.fetch(:links)).not_to include(:friends)
+        expect(user_data.fetch(:links)).not_to include(:friends)
       end
 
       it 'excludes the entity from the linked hash' do
@@ -250,10 +252,10 @@ describe Oat::Adapters::JsonAPI do
 
     context 'when an empty entities relationship' do
       let(:user) { user_class.new('Ismael', 35, 1, [], manager) }
-      let(:users) { hash.fetch(:users) }
+      let(:user_data) { hash.fetch(:data) }
 
       it 'excludes the entity from user links' do
-        expect(users.first.fetch(:links)).not_to include(:friends)
+        expect(user_data.fetch(:links)).not_to include(:friends)
       end
 
       it 'excludes the entity from the linked hash' do
@@ -282,7 +284,7 @@ describe Oat::Adapters::JsonAPI do
       let(:collection_hash) { collection_serializer.to_hash }
 
       context 'top level' do
-        subject(:users){ collection_hash.fetch(:users) }
+        subject(:users){ collection_hash.fetch(:data).fetch(:users) }
         its(:size) { should eq(2) }
 
         it 'contains the correct first user properties' do
@@ -309,13 +311,13 @@ describe Oat::Adapters::JsonAPI do
           expect(users.first.fetch(:links)).to include(
             :self => {:href => "http://foo.bar.com/#{user.id}"},
             # these links are added by embedding entities
-            :manager => manager.id,
-            :friends => [friend.id]
+            :manager => {id: manager.id.to_s, type: "users"},
+            :friends => [friend.id.to_s]
           )
         end
 
         context 'sub entity' do
-          subject(:linked_managers){ collection_hash.fetch(:linked).fetch(:managers) }
+          subject(:linked_managers){ collection_hash.fetch(:linked).fetch(:users) }
 
           it "does not duplicate an entity that is associated with multiple objects" do
             expect(linked_managers.size).to eq(1)
@@ -352,7 +354,7 @@ describe Oat::Adapters::JsonAPI do
       end
 
       it "doesn't render them as links on the resource" do
-        expect(hash.fetch(:users).first).to_not have_key(:links)
+        expect(hash.fetch(:data)).to_not have_key(:links)
       end
     end
   end
