@@ -284,7 +284,7 @@ describe Oat::Adapters::JsonAPI do
       let(:collection_hash) { collection_serializer.to_hash }
 
       context 'top level' do
-        subject(:users){ collection_hash.fetch(:data).fetch(:users) }
+        subject(:users){ collection_hash.fetch(:data) }
         its(:size) { should eq(2) }
 
         it 'contains the correct first user properties' do

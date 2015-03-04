@@ -130,9 +130,9 @@ module Oat
         else
           h = {data: {}}
           if @treat_as_resource_collection
-            h[:data][root_name] = data[:resource_collection]
+            h[:data] = data[:resource_collection]
           else
-            h[:data]= data
+            h[:data] = data
           end
           h[:linked] = @entities if @entities.keys.any?
           h[:links] = @link_templates if @link_templates.keys.any?
